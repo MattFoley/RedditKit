@@ -52,10 +52,11 @@ const NSInteger RKClientErrorTimedOut = 504;
         case 200:
             if ([RKClient string:responseString containsSubstring:@"WRONG_PASSWORD"]) return [RKClient invalidCredentialsError];
             if ([RKClient string:responseString containsSubstring:@"BAD_CAPTCHA"]) return [RKClient invalidCaptchaError];
-            if ([RKClient string:responseString containsSubstring:@"RATELIMIT"]) return [RKClient rateLimitedError];
+            if ([RKClient string:responseString containsSubstring:@"RATELIMIT"]) return [RKClient rateLimitedError:responseString];
             if ([RKClient string:responseString containsSubstring:@"BAD_CSS_NAME"]) return [RKClient invalidCSSClassNameError];
             if ([RKClient string:responseString containsSubstring:@"TOO_OLD"]) return [RKClient archivedError];
             if ([RKClient string:responseString containsSubstring:@"TOO_MUCH_FLAIR_CSS"]) return [RKClient tooManyFlairClassNamesError];
+            if ([RKClient string:responseString containsSubstring:@"QUOTA_FILLED"]) return [RKClient rateLimitedError:responseString];
             
             break;
         case 400:
@@ -113,9 +114,20 @@ const NSInteger RKClientErrorTimedOut = 504;
     return [NSError errorWithDomain:RKClientErrorDomain code:RKClientErrorInvalidCredentials userInfo:userInfo];
 }
 
-+ (NSError *)rateLimitedError
++ (NSError *)rateLimitedError:(NSString *)response
 {
-    NSDictionary *userInfo = [RKClient userInfoWithDescription:@"Rate limited" failureReason:@"You have exceeded reddit's rate limit."];
+    NSData *jsonData = [response dataUsingEncoding:NSUTF8StringEncoding];
+    NSDictionary *responseDict = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:nil];
+    NSMutableDictionary *userInfo = [[RKClient userInfoWithDescription:@"Rate limited" failureReason:@"You have exceeded reddit's rate limit."] mutableCopy];
+    if ([responseDict.allKeys containsObject:@"json"]) {
+        if ([responseDict[@"json"] isKindOfClass:[NSDictionary class]]) {
+            if ([[responseDict[@"json"] allKeys] containsObject:@"ratelimit"]) {
+                userInfo[@"ratelimit"] = responseDict[@"json"][@"ratelimit"];
+            } else {
+                userInfo[@"ratelimit"] = @(3610);
+            }
+        }
+    }
     return [NSError errorWithDomain:RKClientErrorDomain code:RKClientErrorRateLimited userInfo:userInfo];
 }
 

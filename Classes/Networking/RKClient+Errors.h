@@ -71,7 +71,7 @@ extern const NSInteger RKClientErrorTimedOut;
 /**
  Returns an error that occurs when the user is rate limited.
  */
-+ (NSError *)rateLimitedError;
++ (NSError *)rateLimitedError:(NSString *)response;
 
 /**
  Returns an error that occurs when the user provides too many flair class names.
